@@ -1,0 +1,47 @@
+version: '3.9'
+services:
+  python:
+    container_name: python
+    build: ./init
+    working_dir: /var/tmp/project
+    volumes:
+      - ./scrypts:/var/tmp/project
+    command: sh -c "python 3.2_pro.py"
+    ports: 
+      - 4000:4000
+    networks:
+      - project-network
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:alpine
+    environment:
+      POSTGRES_DB: "testdb"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - project-db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d testdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - project-network
+
+networks:
+  project-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/16 # Подсеть для контейнеров
+
+volumes:
+  project-db:
