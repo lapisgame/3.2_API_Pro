@@ -1,47 +1,25 @@
-version: '3.9'
+version: '2.9'
 services:
-  python:
-    container_name: python
-    build: ./init
-    working_dir: /var/tmp/project
-    volumes:
-      - ./scrypts:/var/tmp/project
-    command: sh -c "python 3.2_pro.py"
-    ports: 
-      - 4000:4000
-    networks:
-      - project-network
-    depends_on:
-      - postgres
-
-  postgres:
-    image: postgres:alpine
-    environment:
-      POSTGRES_DB: "testdb"
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "postgres"
-      PGDATA: "/var/lib/postgresql/data/pgdata"
-    volumes:
-      - project-db:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d testdb"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-    networks:
-      - project-network
-
-networks:
-  project-network:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.25.0.0/16 # Подсеть для контейнеров
-
-volumes:
-  project-db:
+    app:
+        container_name: python_container
+        build: ./init/
+        environment:
+            - PYTHONUNBUFFERED=1
+        depends_on:
+            db:
+                condition: service_healthy
+        links:
+            - db
+    db:
+        image: postgres:latest
+        container_name: postgres_container
+        hostname: db
+        ports: 
+            - 5432:5432
+        env_file:
+            - ./init/db_config.env
+        healthcheck:
+            test: ["CMD", "pg_isready", "-d", "lapis_db", "-U", "postgres"]
+            interval: 5s
+            retries: 5
+        restart: always

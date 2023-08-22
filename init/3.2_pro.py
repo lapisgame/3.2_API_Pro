@@ -7,13 +7,11 @@ import datetime
 import calendar
 import psycopg2
 
-db_name = 'testdb'
-db_user = 'postgres'
-db_pass = 'postgres'
-db_host = 'postgres' #какаято хрень с коннектом
-db_port = '5432'
-
-db_string = f'postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}'
+host = 'db'
+port = '5432'
+user = 'postgres'
+password = 'postgres'
+database = 'lapis_db'
 
 headers = ['currency', 'basic_curr', 'rate_date', 'rate'] 
 mart_headers = ["валюта", "день_макс", "день_мин", "курс_макс", "курс_мин", "курс_сред", "курс_посл"]
@@ -105,40 +103,36 @@ for symb in symbols:
     data_mart = data_mart_string(symb)
    
     
-    with psycopg2.connect(db_string) as conn:
+    with psycopg2.connect(host=host, port=port, user=user, password=password, database=database) as conn:
         cursor = conn.cursor()
         cursor.execute(create)
         conn.commit()
 
         for row in data:
-            cursor.execute(
-                f"insert into ticker_{symb} ({', '.join(headers)}) values ({', '.join(['%s'] * len(headers))})",
-                row
-            )
-            conn.commit()       
+            cursor.execute(f"insert into ticker_{symb} ({', '.join(headers)}) values ({', '.join(['%s'] * len(headers))})", row)
+            conn.commit()     
+        print(f'insert into ticker_{symb} OK')  
     conn.close()
 
 report_data = list()
 
 for symb in symbols:
-        with psycopg2.connect(db_string) as conn:
-                data_mart = data_mart_string(symb)
-                
-                cursor = conn.cursor()
-                cursor.execute(data_mart)
-                report_data.append(cursor.fetchone())
-                conn.commit()
-        conn.close()
-
-with psycopg2.connect(db_string) as conn:
+    with psycopg2.connect(host=host, port=port, user=user, password=password, database=database) as conn:
+        data_mart = data_mart_string(symb)
+        
         cursor = conn.cursor()
-        cursor.execute(data_mart_table)
+        cursor.execute(data_mart)
+        report_data.append(cursor.fetchone())
         conn.commit()
-              
-        for row in report_data:
-                cursor.execute(
-                                f"INSERT INTO curr_report VALUES ({', '.join(['%s'] * len(mart_headers))})",
-                row
-                )
+    conn.close()
+
+with psycopg2.connect(host=host, port=port, user=user, password=password, database=database) as conn:
+    cursor = conn.cursor()
+    cursor.execute(data_mart_table)
+    conn.commit()
+            
+    for row in report_data:
+        cursor.execute(f"INSERT INTO curr_report VALUES ({', '.join(['%s'] * len(mart_headers))})", row)
 
 conn.commit()
+print("curr_report OK")
